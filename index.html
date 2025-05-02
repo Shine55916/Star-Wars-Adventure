@@ -919,6 +919,104 @@
             border: 1px solid #cd7f32;
         }
 
+        /* 公會商店樣式 */
+        .guild-shop {
+            background: rgba(30, 39, 46, 0.95);
+            border: 2px solid var(--neon-blue);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .shop-categories {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .shop-category {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        .shop-category:hover, .shop-category.active {
+            background: rgba(188, 19, 254, 0.2);
+            border-color: var(--neon-purple);
+        }
+
+        .shop-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .shop-item {
+            background: rgba(0, 243, 255, 0.05);
+            border: 1px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .shop-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .item-price {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(30, 39, 46, 0.9);
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+
+        .diamond-currency {
+            color: #1ecbe1;
+        }
+
+        .gold-currency {
+            color: #ffd700;
+        }
+
+        .locked-item {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .locked-item::after {
+            content: '🔒';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+        }
+
+        .level-requirement {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(188, 19, 254, 0.2);
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
         /* 寵物系統樣式 */
         .pet-section {
             background: rgba(0, 243, 255, 0.05);
@@ -1386,6 +1484,138 @@
                                     :disabled="player.gold < outfit.price || ownedOutfits.includes(outfit.id)">
                                 {{ ownedOutfits.includes(outfit.id) ? '已擁有' : '購買' }}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 公會商店系統 -->
+            <div class="guild-shop">
+                <h2>公會商店</h2>
+                <div class="shop-categories">
+                    <div class="shop-category active">全部</div>
+                    <div class="shop-category">武器</div>
+                    <div class="shop-category">防具</div>
+                    <div class="shop-category">寵物</div>
+                    <div class="shop-category">特殊道具</div>
+                    <div class="shop-category">消耗品</div>
+                </div>
+                
+                <div class="shop-items">
+                    <!-- 鑽石商品範例 -->
+                    <div class="shop-item">
+                        <img src="legendary-armor.png" alt="傳說戰甲">
+                        <h3>傳說戰甲</h3>
+                        <div class="item-price">
+                            <span class="diamond-currency">💎 2000</span>
+                        </div>
+                        <div class="level-requirement">需要公會等級: 10</div>
+                    </div>
+
+                    <!-- 一般商品範例 -->
+                    <div class="shop-item">
+                        <img src="iron-sword.png" alt="精鐵長劍">
+                        <h3>精鐵長劍</h3>
+                        <div class="item-price">
+                            <span class="gold-currency">🪙 1500</span>
+                        </div>
+                    </div>
+
+                    <!-- 鎖定商品範例 -->
+                    <div class="shop-item locked-item">
+                        <img src="dragon-armor.png" alt="龍鱗護甲">
+                        <h3>龍鱗護甲</h3>
+                        <div class="item-price">
+                            <span class="diamond-currency">💎 5000</span>
+                        </div>
+                        <div class="level-requirement">需要公會等級: 20</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 寵物系統 -->
+            <div class="pet-system">
+                <h2>寵物系統</h2>
+                <div class="pet-grid">
+                    <!-- 貓咪寵物 -->
+                    <div class="pet-card">
+                        <div class="pet-avatar">🐱</div>
+                        <h3>幻影獵手</h3>
+                        <div class="pet-stats">
+                            <div>等級: 5</div>
+                            <div>親密度: 78/100</div>
+                        </div>
+                        <div class="pet-skill">技能: 隱身突襲</div>
+                        <div class="interaction-buttons">
+                            <button class="pet-button">餵食</button>
+                            <button class="pet-button">互動</button>
+                        </div>
+                    </div>
+
+                    <!-- 狗狗寵物 -->
+                    <div class="pet-card">
+                        <div class="pet-avatar">🐕</div>
+                        <h3>忠誠守衛</h3>
+                        <div class="pet-stats">
+                            <div>等級: 7</div>
+                            <div>親密度: 92/100</div>
+                        </div>
+                        <div class="pet-skill">技能: 守護光環</div>
+                        <div class="interaction-buttons">
+                            <button class="pet-button">餵食</button>
+                            <button class="pet-button">互動</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 稱號系統 -->
+            <div class="title-system">
+                <h2>稱號收藏</h2>
+                <div class="title-grid">
+                    <!-- 普通稱號 -->
+                    <div class="title-card">
+                        <div class="title-rarity rarity-common">普通</div>
+                        <h3>初心冒險者</h3>
+                        <p>完成新手教學任務可獲得</p>
+                        <div class="title-requirements">
+                            進度: 完成
+                        </div>
+                    </div>
+
+                    <!-- 稀有稱號 -->
+                    <div class="title-card">
+                        <div class="title-rarity rarity-rare">稀有</div>
+                        <h3>公會戰士</h3>
+                        <p>參與50場公會戰</p>
+                        <div class="title-requirements">
+                            進度: 32/50
+                        </div>
+                        <div class="title-unlock-progress">
+                            <div class="progress-bar" style="width: 64%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 史詩稱號 -->
+                    <div class="title-card">
+                        <div class="title-rarity rarity-epic">史詩</div>
+                        <h3>屠龍勇士</h3>
+                        <p>擊敗世界首領「遠古巨龍」</p>
+                        <div class="title-requirements">
+                            進度: 未完成
+                        </div>
+                    </div>
+
+                    <!-- 傳說稱號 -->
+                    <div class="title-card">
+                        <div class="title-rarity rarity-legendary">傳說</div>
+                        <h3>虛空征服者</h3>
+                        <p>完成所有虛空探索任務</p>
+                        <div class="title-requirements">
+                            進度: 3/10
+                        </div>
+                        <div class="title-unlock-progress">
+                            <div class="progress-bar" style="width: 30%"></div>
                         </div>
                     </div>
                 </div>
@@ -2494,138 +2724,6 @@
                         'fas fa-star',
                         'fas fa-fire',
                         'fas fa-bolt',
-                        'fas fa-moon',
-                        'fas fa-sun',
-                        'fas fa-heart'
-                    ],
-                    donationOptions: [
-                        {
-                            id: 'small',
-                            name: '小額捐獻',
-                            cost: 100,
-                            contribution: 10
-                        },
-                        {
-                            id: 'medium',
-                            name: '中額捐獻',
-                            cost: 500,
-                            contribution: 60
-                        },
-                        {
-                            id: 'large',
-                            name: '大額捐獻',
-                            cost: 1000,
-                            contribution: 150
-                        },
-                        {
-                            id: 'epic',
-                            name: '史詩捐獻',
-                            cost: 5000,
-                            contribution: 1000
-                        }
-                    ],
-                    weeklyGuildRanking: [],
-                    guildRoles: {
-                        LEADER: '會長',
-                        VICE_LEADER: '副會長',
-                        OFFICER: '幹部',
-                        ELITE: '精英',
-                        MEMBER: '成員'
-                    },
-                    guildLevelRequirements: {
-                        CREATE: 10,
-                        JOIN: 5
-                    },
-                    showWardrobe: false,
-                    currentGuideSection: 'newbie',
-                    guideSections: [
-                        { id: 'newbie', name: '新手指南' },
-                        { id: 'pets', name: '寵物圖鑑' },
-                        { id: 'gold', name: '賺錢攻略' }
-                    ],
-                    petGuide: {
-                        '普通寵物': [
-                            { name: '小貓咪', description: '親密度容易提升，適合新手培養' },
-                            { name: '小狗狗', description: '探險能力較強，容易獲得金幣' }
-                        ],
-                        '稀有寵物': [
-                            { name: '幻影貓', description: '具有隱身能力，探險成功率高' },
-                            { name: '火焰狼', description: '戰鬥能力極強，適合競技場' }
-                        ],
-                        '傳說寵物': [
-                            { name: '九尾狐', description: '全能型寵物，各項屬性均衡' },
-                            { name: '神龍', description: '最強戰力，但需要大量資源培養' }
-                        ]
-                    },
-                    dailyQuests: [
-                        {
-                            id: 1,
-                            name: '寵物餵食',
-                            description: '餵食寵物3次',
-                            progress: 0,
-                            target: 3,
-                            reward: 100
-                        },
-                        {
-                            id: 2,
-                            name: '寵物互動',
-                            description: '與寵物互動5次',
-                            progress: 0,
-                            target: 5,
-                            reward: 150
-                        },
-                        {
-                            id: 3,
-                            name: '寵物探險',
-                            description: '完成2次寵物探險',
-                            progress: 0,
-                            target: 2,
-                            reward: 200
-                        }
-                    ]
-                }
-            },
-            computed: {
-                canAttack() {
-                    return this.attackCooldown === 0 && this.currentMonster && this.currentMonster.health > 0;
-                },
-                canHeal() {
-                    return this.healCooldown === 0 && this.player.health < this.player.maxHealth;
-                },
-                totalMonsterKills() {
-                    return Object.values(this.monsterKillCount).reduce((a, b) => a + b, 0);
-                }
-            },
-            methods: {
-                setUsername() {
-                    if (this.tempUsername.trim()) {
-                        this.tempUsername = this.tempUsername.trim();
-                    }
-                },
-                selectGender(gender) {
-                    this.selectedGender = gender;
-                },
-                selectInitialOutfit(outfit) {
-                    this.selectedInitialOutfit = outfit;
-                    this.ownedOutfits = [outfit.id];
-                    // 更新玩家初始屬性
-                    this.player.attack += outfit.stats.attack || 0;
-                    this.player.defense = (outfit.stats.defense || 0);
-                    this.player.speed = (outfit.stats.speed || 0);
-                    this.startGame();
-                },
-                startGame() {
-                    if (this.tempUsername.trim() && this.selectedGender && this.selectedInitialOutfit) {
-                        this.username = this.tempUsername.trim();
-                        this.playerId = `${this.username}#${Math.floor(1000 + Math.random() * 9000)}`;
-                        this.joinGame();
-                    }
-                },
-                joinGame() {
-                    gun.get('players').get(this.username).put({
-                        ...this.player,
-                        name: this.username,
-                        lastActive: Date.now()
                     });
                     this.startGameLoop();
                 },
@@ -3288,3 +3386,134 @@
             mounted() {
                 // 監聽其他玩家
                 gun.get('players').map().on((data, id) => {
+                    if (data && id !== this.username && Date.now() - data.lastActive < 300000) {
+                        const playerIndex = this.otherPlayers.findIndex(p => p.name === id);
+                        if (playerIndex === -1) {
+                            this.otherPlayers.push({ ...data, name: id });
+                        } else {
+                            this.otherPlayers[playerIndex] = { ...data, name: id };
+                        }
+                    }
+                });
+
+                // 定期更新玩家活躍狀態
+                if (this.username) {
+                    setInterval(() => this.updatePlayerState(), 30000);
+                }
+
+                // 鍵盤控制
+                window.addEventListener('keydown', (e) => {
+                    if (!this.username) return;
+
+                    switch(e.key) {
+                        case 'ArrowLeft':
+                            this.player.x = Math.max(20, this.player.x - 10);
+                            break;
+                        case 'ArrowRight':
+                            this.player.x = Math.min(780, this.player.x + 10);
+                            break;
+                        case 'ArrowUp':
+                            this.player.y = Math.max(20, this.player.y - 10);
+                            break;
+                        case 'ArrowDown':
+                            this.player.y = Math.min(380, this.player.y + 10);
+                            break;
+                        case ' ':
+                            this.attack();
+                            break;
+                        case 'h':
+                            this.heal();
+                            break;
+                        case 'l':
+                            this.toggleQuestLog();
+                            break;
+                    }
+                    this.updatePlayerState();
+                });
+
+                // 載入已發現的怪物和擊殺數據
+                gun.get('monster-discoveries').get(this.username).on((data) => {
+                    if (data) {
+                        this.discoveredMonsters = data;
+                    }
+                });
+
+                gun.get('monster-kills').get(this.username).on((data) => {
+                    if (data) {
+                        this.monsterKillCount = data;
+                    }
+                });
+
+                // 載入玩家裝備資料
+                gun.get('player-outfits').get(this.username).on((data) => {
+                    if (data) {
+                        this.ownedOutfits = data;
+                    }
+                });
+
+                // 載入玩家稱號資料
+                if (this.username) {
+                    gun.get('player-titles').get(this.username).on((data) => {
+                        if (data && data.currentTitle) {
+                            const title = this.availableTitles.find(t => t.id === data.currentTitle);
+                            if (title) {
+                                this.currentTitle = title.name;
+                            }
+                        }
+                    });
+                }
+
+                // 添加畫布點擊事件
+                this.$refs.gameCanvas.addEventListener('click', (e) => {
+                    const rect = e.target.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    this.checkNPCInteraction(x, y);
+                });
+
+                // 初始化聊天室拖動功能
+                this.initializeChatDrag();
+
+                // 監聽聊天訊息
+                gun.get('chat').map().on((data, id) => {
+                    if (data && !this.chatMessages.some(m => m.id === data.id)) {
+                        this.chatMessages.push(data);
+                        // 保持最新的100條訊息
+                        if (this.chatMessages.length > 100) {
+                            this.chatMessages.shift();
+                        }
+                        // 滾動到最新訊息
+                        this.$nextTick(() => {
+                            const chatMessages = document.querySelector('.chat-messages');
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        });
+                    }
+                });
+
+                // 設置每週重置
+                const now = new Date();
+                const nextMonday = new Date();
+                nextMonday.setDate(now.getDate() + (7 + 1 - now.getDay()) % 7);
+                nextMonday.setHours(0, 0, 0, 0);
+                
+                const timeUntilReset = nextMonday.getTime() - now.getTime();
+                setTimeout(() => {
+                    this.weeklyReset();
+                    // 設置每週定時重置
+                    setInterval(this.weeklyReset, 7 * 24 * 60 * 60 * 1000);
+                }, timeUntilReset);
+
+                this.autoSave();
+            },
+            unmounted() {
+                if (this.gameLoop) {
+                    clearInterval(this.gameLoop);
+                }
+            }
+        }).mount('#app');
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
