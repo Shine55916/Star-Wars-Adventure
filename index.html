@@ -1,0 +1,3290 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多人線上科幻冒險</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- GUN.js -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.min.js"></script>
+    <!-- Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.min.js"></script>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --cyber-yellow: #f7d794;
+            --dark-cyber: #1e272e;
+        }
+
+        body {
+            background-color: var(--dark-cyber);
+            color: white;
+        }
+
+        .game-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .game-canvas {
+            border: 2px solid #333;
+            background: #f0f0f0;
+            margin: 20px 0;
+        }
+
+        .player-info {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .health-bar-fill {
+            height: 100%;
+            background: #28a745;
+            transition: width 0.3s ease;
+        }
+
+        .monster-info {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 5px;
+        }
+
+        .world-select {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .world-card, .area-card {
+            background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--neon-blue);
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .world-card:hover, .area-card:hover {
+            border-color: var(--neon-purple);
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .monster-gallery {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+            transition: right 0.3s ease;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .monster-gallery.active {
+            right: 0;
+        }
+
+        .monster-entry {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .monster-entry.discovered {
+            background-color: #e3f2fd;
+        }
+
+        .shop-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 1000px;
+            height: 80vh;
+            background: rgba(30, 39, 46, 0.95);
+            border: 2px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .shop-container.active {
+            display: block;
+        }
+
+        .outfit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .outfit-card {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .outfit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .outfit-image {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            color: var(--neon-blue);
+        }
+
+        .avatar-selection {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .avatar-option {
+            width: 100px;
+            height: 100px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .avatar-option:hover {
+            border-color: var(--neon-purple);
+            transform: scale(1.1);
+        }
+
+        .avatar-option.selected {
+            border-color: var(--cyber-yellow);
+            box-shadow: 0 0 10px var(--cyber-yellow);
+        }
+
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid var(--neon-blue);
+        }
+
+        .nav-buttons {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+
+        .nav-buttons button {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .nav-buttons button:hover {
+            background: rgba(188, 19, 254, 0.2);
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .world-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .npc-dialog {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 800px;
+            background: rgba(30, 39, 46, 0.95);
+            border: 2px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 20px;
+            color: white;
+            z-index: 1000;
+        }
+
+        .npc-portrait {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px solid var(--neon-purple);
+            margin-right: 20px;
+            background: rgba(0, 243, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+
+        .dialog-content {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .dialog-text {
+            flex-grow: 1;
+        }
+
+        .dialog-options {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .dialog-option {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dialog-option:hover {
+            background: rgba(188, 19, 254, 0.2);
+            border-color: var(--neon-purple);
+            transform: translateY(-2px);
+        }
+
+        .quest-log {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 800px;
+            height: 80vh;
+            background: rgba(30, 39, 46, 0.95);
+            border: 2px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .quest-log.active {
+            display: block;
+        }
+
+        .quest-entry {
+            border: 1px solid var(--neon-blue);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(0, 243, 255, 0.1);
+        }
+
+        .quest-entry.completed {
+            border-color: var(--cyber-yellow);
+            background: rgba(247, 215, 148, 0.1);
+        }
+
+        .quest-objectives {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .quest-objective {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .objective-complete {
+            color: var(--cyber-yellow);
+        }
+
+        .npc-marker {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(0, 243, 255, 0.3);
+            border: 2px solid var(--neon-blue);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        .npc-marker:hover {
+            transform: scale(1.2);
+            background: rgba(188, 19, 254, 0.3);
+            border-color: var(--neon-purple);
+        }
+
+        .npc-marker.has-quest::after {
+            content: '!';
+            position: absolute;
+            top: -10px;
+            right: -5px;
+            background: var(--cyber-yellow);
+            color: var(--dark-cyber);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 243, 255, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(0, 243, 255, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 243, 255, 0);
+            }
+        }
+
+        .story-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 39, 46, 0.95);
+            border: 2px solid var(--neon-purple);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .story-notification.active {
+            opacity: 1;
+        }
+
+        .gender-select {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .gender-option {
+            width: 150px;
+            height: 150px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0, 243, 255, 0.1);
+        }
+
+        .gender-option:hover, .gender-option.selected {
+            border-color: var(--neon-purple);
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .gender-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .initial-outfit-select {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .player-avatar-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .player-avatar-container:hover {
+            transform: scale(1.05);
+        }
+
+        .player-avatar-frame {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--neon-blue);
+            border-radius: 50%;
+            padding: 2px;
+            background: rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            position: relative;
+        }
+
+        .player-title {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--neon-purple);
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .profile-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 800px;
+            background: rgba(30, 39, 46, 0.95);
+            border: 2px solid var(--neon-blue);
+            border-radius: 15px;
+            padding: 30px;
+            z-index: 2000;
+            display: none;
+        }
+
+        .profile-modal.active {
+            display: block;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border: 4px solid var(--neon-purple);
+            border-radius: 50%;
+            margin-right: 30px;
+        }
+
+        .profile-info {
+            flex-grow: 1;
+        }
+
+        .profile-title {
+            color: var(--cyber-yellow);
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .profile-name {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            color: var(--neon-blue);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .profile-outfit {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .outfit-preview {
+            width: 200px;
+            height: 300px;
+            margin: 0 auto;
+            background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--neon-purple);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5em;
+            color: var(--neon-blue);
+        }
+
+        .title-collection {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .title-item {
+            background: rgba(188, 19, 254, 0.1);
+            border: 1px solid var(--neon-purple);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .title-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 15px var(--neon-purple);
+        }
+
+        .title-item.active {
+            background: rgba(188, 19, 254, 0.3);
+            border-color: var(--cyber-yellow);
+        }
+
+        /* 聊天室樣式 */
+        .chat-button {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .chat-button:hover {
+            transform: scale(1.1);
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .chat-window {
+            position: fixed;
+            right: 20px;
+            bottom: 100px;
+            width: 350px;
+            height: 500px;
+            background: rgba(30, 39, 46, 0.95);
+            border: 2px solid var(--neon-blue);
+            border-radius: 15px;
+            display: none;
+            z-index: 1000;
+            resize: both;
+            overflow: hidden;
+            min-width: 300px;
+            min-height: 400px;
+        }
+
+        .chat-window.active {
+            display: block;
+        }
+
+        .chat-header {
+            padding: 10px;
+            background: rgba(0, 243, 255, 0.1);
+            border-bottom: 2px solid var(--neon-blue);
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            height: calc(100% - 100px);
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            max-width: 80%;
+            word-break: break-word;
+        }
+
+        .chat-message.own {
+            background: rgba(0, 243, 255, 0.1);
+            margin-left: auto;
+        }
+
+        .chat-message.other {
+            background: rgba(188, 19, 254, 0.1);
+            margin-right: auto;
+        }
+
+        .chat-input {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex-grow: 1;
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            border-radius: 5px;
+            color: white;
+            padding: 5px 10px;
+        }
+
+        .chat-input button {
+            background: rgba(188, 19, 254, 0.1);
+            border: 1px solid var(--neon-purple);
+            color: white;
+            border-radius: 5px;
+            padding: 5px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input button:hover {
+            background: rgba(188, 19, 254, 0.3);
+            box-shadow: 0 0 10px var(--neon-purple);
+        }
+
+        /* 武器選擇樣式 */
+        .weapon-preview {
+            position: absolute;
+            top: 50%;
+            left: -50px;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            color: var(--neon-blue);
+        }
+
+        /* 公會系統樣式 */
+        .guild-section {
+            background: rgba(0, 243, 255, 0.05);
+            border: 2px solid var(--neon-blue);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .guild-card {
+            background: rgba(30, 39, 46, 0.95);
+            border: 1px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .guild-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .guild-emblem {
+            width: 60px;
+            height: 60px;
+            border: 2px solid var(--neon-purple);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.5em;
+            background: rgba(188, 19, 254, 0.1);
+        }
+
+        .guild-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .guild-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .guild-stat {
+            background: rgba(0, 243, 255, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .guild-rank {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(188, 19, 254, 0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            border: 1px solid var(--neon-purple);
+        }
+
+        .guild-members {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .guild-member {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+        }
+
+        .member-role {
+            margin-left: auto;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        .role-leader {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid gold;
+        }
+
+        .role-officer {
+            background: rgba(192, 192, 192, 0.2);
+            border: 1px solid silver;
+        }
+
+        .role-member {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+        }
+
+        .guild-donation {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 243, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .donation-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .donation-option {
+            background: rgba(30, 39, 46, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .donation-option:hover {
+            background: rgba(0, 243, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .guild-weekly-ranking {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(188, 19, 254, 0.05);
+            border-radius: 10px;
+        }
+
+        .ranking-list {
+            margin-top: 10px;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid rgba(188, 19, 254, 0.2);
+        }
+
+        .ranking-position {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .position-1 {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid gold;
+        }
+
+        .position-2 {
+            background: rgba(192, 192, 192, 0.2);
+            border: 1px solid silver;
+        }
+
+        .position-3 {
+            background: rgba(205, 127, 50, 0.2);
+            border: 1px solid #cd7f32;
+        }
+
+        /* 寵物系統樣式 */
+        .pet-section {
+            background: rgba(0, 243, 255, 0.05);
+            border: 2px solid var(--neon-blue);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .pet-card {
+            background: rgba(30, 39, 46, 0.95);
+            border: 1px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .pet-avatar {
+            width: 100px;
+            height: 100px;
+            border: 2px solid var(--neon-purple);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pet-costume {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .pet-info {
+            flex: 1;
+        }
+
+        .pet-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .pet-stat {
+            background: rgba(0, 243, 255, 0.1);
+            padding: 5px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        .pet-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .pet-action {
+            background: rgba(188, 19, 254, 0.2);
+            border: 1px solid var(--neon-purple);
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pet-action:hover {
+            background: rgba(188, 19, 254, 0.4);
+        }
+
+        .wardrobe-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .costume-item {
+            background: rgba(30, 39, 46, 0.95);
+            border: 1px solid var(--neon-blue);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .costume-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .costume-item.equipped {
+            border-color: var(--neon-purple);
+            background: rgba(188, 19, 254, 0.2);
+        }
+
+        /* 任務和成就系統樣式 */
+        .quest-section {
+            margin-top: 20px;
+        }
+
+        .quest-card {
+            background: rgba(30, 39, 46, 0.95);
+            border: 1px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .quest-progress {
+            height: 10px;
+            background: rgba(0, 243, 255, 0.1);
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--neon-blue);
+            transition: width 0.3s ease;
+        }
+
+        /* 攻略手冊樣式 */
+        .guide-section {
+            margin-top: 20px;
+        }
+
+        .guide-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .guide-nav-item {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        .guide-nav-item.active {
+            background: rgba(0, 243, 255, 0.3);
+        }
+
+        .guide-content {
+            background: rgba(30, 39, 46, 0.95);
+            border: 1px solid var(--neon-blue);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .guide-section h4 {
+            color: var(--neon-blue);
+            margin-bottom: 15px;
+        }
+
+        .guide-section p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .guide-section ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .guide-section li {
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .guide-section li:before {
+            content: '•';
+            color: var(--neon-purple);
+            position: absolute;
+            left: -15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container py-4">
+        <div class="nav-buttons">
+            <button class="btn" @click="toggleShop">
+                <i class="fas fa-store"></i> 服裝商店
+            </button>
+            <button class="btn ms-2" @click="toggleMonsterGallery">
+                <i class="fas fa-book"></i> 怪物圖鑑
+            </button>
+            <button v-if="currentWorld" class="btn ms-2" @click="returnToWorldSelect">
+                <i class="fas fa-globe"></i> 返回世界選擇
+            </button>
+            <button class="btn ms-2" @click="openWorldMap">
+                <i class="fas fa-map"></i> 世界地圖
+            </button>
+        </div>
+
+        <!-- 新增玩家頭像容器 -->
+        <div v-if="username" class="player-avatar-container" @click="toggleProfile">
+            <div class="player-avatar-frame">
+                <img :src="currentAvatarUrl" alt="玩家頭像" class="player-avatar">
+                <div class="player-title">{{ currentTitle }}</div>
+            </div>
+        </div>
+
+        <!-- 個人檔案彈窗 -->
+        <div class="profile-modal" :class="{ active: showProfile }">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-user-circle"></i> 個人檔案</h2>
+                <button class="btn btn-close btn-close-white" @click="toggleProfile"></button>
+            </div>
+            
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <img :src="currentAvatarUrl" alt="玩家頭像">
+                </div>
+                <div class="profile-info">
+                    <div class="profile-title">{{ currentTitle }}</div>
+                    <div class="profile-name">{{ username }}</div>
+                    <div>遊戲ID: {{ playerId }}</div>
+                </div>
+            </div>
+
+            <div class="profile-stats">
+                <div class="stat-card">
+                    <div class="stat-value">{{ player.level }}</div>
+                    <div class="stat-label">等級</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ totalMonsterKills }}</div>
+                    <div class="stat-label">擊殺數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ discoveredMonsters.length }}</div>
+                    <div class="stat-label">發現怪物</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ ownedOutfits.length }}</div>
+                    <div class="stat-label">收集裝備</div>
+                </div>
+            </div>
+
+            <div class="profile-outfit">
+                <h3 class="mb-3">當前裝備</h3>
+                <div class="outfit-preview">
+                    <i :class="currentOutfitIcon"></i>
+                </div>
+            </div>
+
+            <div class="title-section">
+                <h3 class="mb-3">稱號收藏</h3>
+                <div class="title-collection">
+                    <div v-for="title in availableTitles" 
+                         :key="title.id"
+                         class="title-item"
+                         :class="{ active: currentTitle === title.name }"
+                         @click="selectTitle(title)">
+                        <div>{{ title.name }}</div>
+                        <small>{{ title.description }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-container">
+            <h1 class="text-center mb-4">多人線上科幻冒險</h1>
+            
+            <!-- 玩家登入 -->
+            <div v-if="!username" class="text-center">
+                <h3>請輸入你的名稱開始冒險</h3>
+                <div class="input-group mb-3 w-50 mx-auto">
+                    <input type="text" class="form-control" v-model="tempUsername" placeholder="輸入名稱" @keyup.enter="setUsername">
+                    <button class="btn btn-primary" @click="setUsername">下一步</button>
+                </div>
+
+                <div v-if="tempUsername && !selectedGender" class="gender-select">
+                    <div class="gender-option" 
+                         :class="{ selected: selectedGender === 'male' }"
+                         @click="selectGender('male')">
+                        <i class="fas fa-mars gender-icon"></i>
+                        <span>男性角色</span>
+                    </div>
+                    <div class="gender-option"
+                         :class="{ selected: selectedGender === 'female' }"
+                         @click="selectGender('female')">
+                        <i class="fas fa-venus gender-icon"></i>
+                        <span>女性角色</span>
+                    </div>
+                </div>
+
+                <div v-if="selectedGender && !selectedInitialOutfit">
+                    <h4 class="mb-4">選擇初始套裝</h4>
+                    <div class="initial-outfit-select">
+                        <div v-for="outfit in initialOutfits" 
+                             :key="outfit.id"
+                             class="outfit-card"
+                             @click="selectInitialOutfit(outfit)">
+                            <div class="outfit-image">
+                                <i :class="outfit.icon"></i>
+                            </div>
+                            <h4>{{ outfit.name }}</h4>
+                            <p>{{ outfit.description }}</p>
+                            <div class="weapon-preview">
+                                <i :class="outfit.weaponIcon"></i>
+                            </div>
+                            <div class="stats-preview">
+                                <div v-for="(value, stat) in outfit.stats" :key="stat">
+                                    {{ statNames[stat] }}: {{ value }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 遊戲區域 -->
+            <div v-else>
+                <!-- 世界選擇 -->
+                <div v-if="showWorldMap || (!currentWorld && !currentArea)">
+                    <h2 class="text-center mb-4">選擇冒險世界</h2>
+                    <div class="world-select">
+                        <div v-for="world in worlds" 
+                             :key="world.id" 
+                             class="world-card"
+                             @click="selectWorld(world)">
+                            <h3>{{ world.name }}</h3>
+                            <p>{{ world.description }}</p>
+                            <small>建議等級: {{ world.recommendedLevel }}+</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 區域選擇 -->
+                <div v-else-if="!currentArea">
+                    <h2 class="text-center mb-4">{{ currentWorld.name }} - 選擇區域</h2>
+                    <div class="world-select">
+                        <div v-for="area in currentWorld.areas" 
+                             :key="area.id" 
+                             class="area-card"
+                             @click="selectArea(area)"
+                             :class="{ 'disabled': player.level < area.recommendedLevel }"
+                             :style="{ opacity: player.level < area.recommendedLevel ? 0.5 : 1 }">
+                            <h3>{{ area.name }}</h3>
+                            <p>{{ area.description }}</p>
+                            <small>建議等級: {{ area.recommendedLevel }}+</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 戰鬥畫面 -->
+                <div v-else>
+                    <!-- 玩家資訊 -->
+                    <div class="player-info mb-4">
+                        <div class="player-stats">
+                            <div>
+                                <strong>{{ username }}</strong>
+                                <div class="health-bar">
+                                    <div class="health-bar-fill" :style="{ width: (player.health / player.maxHealth * 100) + '%' }"></div>
+                                </div>
+                                <small>HP: {{ player.health }}/{{ player.maxHealth }}</small>
+                            </div>
+                            <div>
+                                <div>等級: {{ player.level }}</div>
+                                <div>經驗值: {{ player.exp }}/{{ player.nextLevelExp }}</div>
+                            </div>
+                            <div>
+                                <div>攻擊力: {{ player.attack }}</div>
+                                <div>金幣: {{ player.gold }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 遊戲主畫面 -->
+                    <canvas ref="gameCanvas" class="game-canvas" width="800" height="400"></canvas>
+
+                    <!-- 怪物資訊 -->
+                    <div v-if="currentMonster" class="monster-info">
+                        <h4>{{ currentMonster.name }}</h4>
+                        <div class="health-bar mx-auto" style="width: 300px;">
+                            <div class="health-bar-fill" :style="{ width: (currentMonster.health / currentMonster.maxHealth * 100) + '%', backgroundColor: '#dc3545' }"></div>
+                        </div>
+                        <small>HP: {{ currentMonster.health }}/{{ currentMonster.maxHealth }}</small>
+                    </div>
+
+                    <!-- 遊戲控制 -->
+                    <div class="text-center mt-3">
+                        <button class="btn btn-secondary mx-2" @click="returnToAreaSelect">
+                            返回區域選擇
+                        </button>
+                        <button class="btn btn-primary mx-2" @click="attack" :disabled="!canAttack">
+                            攻擊 ({{ attackCooldown > 0 ? attackCooldown + '秒' : '準備' }})
+                        </button>
+                        <button class="btn btn-success mx-2" @click="heal" :disabled="!canHeal">
+                            治癒 ({{ healCooldown > 0 ? healCooldown + '秒' : '準備' }})
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 怪物圖鑑 -->
+                <div class="monster-gallery" :class="{ active: showMonsterGallery }">
+                    <h3>怪物圖鑑</h3>
+                    <div class="monster-entries">
+                        <div v-for="monster in allMonsters" 
+                             :key="monster.id"
+                             class="monster-entry"
+                             :class="{ discovered: discoveredMonsters.includes(monster.id) }">
+                            <h4>{{ discoveredMonsters.includes(monster.id) ? monster.name : '???' }}</h4>
+                            <div v-if="discoveredMonsters.includes(monster.id)">
+                                <p>{{ monster.description }}</p>
+                                <div>
+                                    <strong>基本屬性：</strong>
+                                    <ul>
+                                        <li>生命值：{{ monster.maxHealth }}</li>
+                                        <li>攻擊力：{{ monster.attack }}</li>
+                                        <li>經驗值：{{ monster.exp }}</li>
+                                        <li>金幣：{{ monster.gold }}</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <strong>出沒地點：</strong> {{ monster.location }}
+                                </div>
+                                <div>
+                                    <strong>擊殺次數：</strong> {{ monsterKillCount[monster.id] || 0 }}
+                                </div>
+                            </div>
+                            <div v-else>
+                                <p>尚未發現的怪物</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 服裝商店 -->
+            <div class="shop-container" :class="{ active: showShop }">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-store"></i> 科幻服裝商店</h2>
+                    <button class="btn btn-close btn-close-white" @click="toggleShop"></button>
+                </div>
+                
+                <div class="outfit-grid">
+                    <div v-for="outfit in outfits" :key="outfit.id" class="outfit-card">
+                        <div class="outfit-image">
+                            <i :class="outfit.icon"></i>
+                        </div>
+                        <h4>{{ outfit.name }}</h4>
+                        <p>{{ outfit.description }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-coins"></i> {{ outfit.price }}</span>
+                            <button class="btn btn-outline-info" 
+                                    @click="purchaseOutfit(outfit)"
+                                    :disabled="player.gold < outfit.price || ownedOutfits.includes(outfit.id)">
+                                {{ ownedOutfits.includes(outfit.id) ? '已擁有' : '購買' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NPC 對話框 -->
+            <div v-if="currentNPC" class="npc-dialog">
+                <div class="dialog-content">
+                    <div class="npc-portrait">
+                        <i :class="currentNPC.icon"></i>
+                    </div>
+                    <div class="dialog-text">
+                        <h4>{{ currentNPC.name }}</h4>
+                        <p>{{ currentDialog }}</p>
+                    </div>
+                </div>
+                <div class="dialog-options">
+                    <button v-for="option in dialogOptions" 
+                            :key="option.text"
+                            class="dialog-option"
+                            @click="selectDialogOption(option)">
+                        {{ option.text }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- 任務日誌 -->
+            <div class="quest-log" :class="{ active: showQuestLog }">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-scroll"></i> 任務日誌</h2>
+                    <button class="btn btn-close btn-close-white" @click="toggleQuestLog"></button>
+                </div>
+                <div class="quest-entries">
+                    <div v-for="quest in activeQuests" 
+                         :key="quest.id"
+                         class="quest-entry"
+                         :class="{ completed: quest.completed }">
+                        <h4>{{ quest.title }}</h4>
+                        <p>{{ quest.description }}</p>
+                        <div class="quest-objectives">
+                            <div v-for="objective in quest.objectives" 
+                                 :key="objective.id"
+                                 class="quest-objective">
+                                <i :class="objective.completed ? 
+                                         'fas fa-check-circle objective-complete' : 
+                                         'far fa-circle'"></i>
+                                <span>{{ objective.description }} 
+                                      ({{ objective.progress }}/{{ objective.target }})</span>
+                            </div>
+                        </div>
+                        <div v-if="quest.completed" class="mt-2 text-end">
+                            <button class="btn btn-outline-warning btn-sm" 
+                                    @click="claimQuestReward(quest)">
+                                領取獎勵
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 劇情提示 -->
+            <div class="story-notification" :class="{ active: showStoryNotification }">
+                {{ storyNotification }}
+            </div>
+
+            <!-- 聊天室 -->
+            <div class="chat-button" @click="toggleChat">
+                <i class="fas fa-comments"></i>
+            </div>
+            
+            <div class="chat-window" :class="{ active: showChat }" id="chatWindow">
+                <div class="chat-header" id="chatHeader">
+                    <span>全球聊天室</span>
+                    <button class="btn-close btn-close-white" @click="toggleChat"></button>
+                </div>
+                <div class="chat-messages">
+                    <div v-for="message in chatMessages" 
+                         :key="message.id"
+                         class="chat-message"
+                         :class="{ own: message.sender === username, other: message.sender !== username }">
+                        <div class="message-sender">{{ message.sender }}</div>
+                        <div class="message-content">{{ message.content }}</div>
+                        <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" v-model="newMessage" @keyup.enter="sendMessage" placeholder="輸入訊息...">
+                    <button @click="sendMessage">發送</button>
+                </div>
+            </div>
+
+            <!-- 公會系統 -->
+            <div v-if="player && player.level >= 10" class="guild-section">
+                <h3 class="mb-4">公會系統</h3>
+                
+                <!-- 未加入公會時顯示 -->
+                <div v-if="!player.guild" class="text-center">
+                    <p>達到10級後可以創建或加入公會</p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-primary" @click="showCreateGuild = true">
+                            創建公會 (需要 1000 金幣)
+                        </button>
+                        <button class="btn btn-info" @click="showGuildList = true">
+                            瀏覽公會列表
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 已加入公會時顯示 -->
+                <div v-else class="guild-card">
+                    <div class="guild-rank">
+                        排名 #{{ player.guild.rank }}
+                    </div>
+                    <div class="guild-info">
+                        <div class="guild-emblem">
+                            <i :class="player.guild.emblem"></i>
+                        </div>
+                        <div>
+                            <h4>{{ player.guild.name }}</h4>
+                            <p>{{ player.guild.description }}</p>
+                        </div>
+                    </div>
+
+                    <div class="guild-stats">
+                        <div class="guild-stat">
+                            <div>等級</div>
+                            <div>{{ player.guild.level }}</div>
+                        </div>
+                        <div class="guild-stat">
+                            <div>成員數</div>
+                            <div>{{ player.guild.members.length }}/50</div>
+                        </div>
+                        <div class="guild-stat">
+                            <div>每週貢獻</div>
+                            <div>{{ player.guild.weeklyContribution }}</div>
+                        </div>
+                        <div class="guild-stat">
+                            <div>總貢獻</div>
+                            <div>{{ player.guild.totalContribution }}</div>
+                        </div>
+                    </div>
+
+                    <div class="guild-members">
+                        <div v-for="member in player.guild.members" 
+                             :key="member.id" 
+                             class="guild-member">
+                            <span>{{ member.name }}</span>
+                            <span>Lv.{{ member.level }}</span>
+                            <span>貢獻: {{ member.contribution }}</span>
+                            <span :class="'member-role role-' + member.role.toLowerCase()">
+                                {{ member.role }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="guild-donation">
+                        <h5>公會捐獻</h5>
+                        <div class="donation-options">
+                            <div class="donation-option" 
+                                 v-for="option in donationOptions" 
+                                 :key="option.id"
+                                 @click="donateToGuild(option)">
+                                <div>{{ option.name }}</div>
+                                <div>{{ option.cost }} 金幣</div>
+                                <div>+{{ option.contribution }} 貢獻</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="guild-weekly-ranking">
+                        <h5>本週公會排名</h5>
+                        <div class="ranking-list">
+                            <div v-for="(guild, index) in weeklyGuildRanking" 
+                                 :key="guild.id" 
+                                 class="ranking-item">
+                                <div :class="'ranking-position position-' + (index + 1)">
+                                    {{ index + 1 }}
+                                </div>
+                                <span>{{ guild.name }}</span>
+                                <span class="ms-auto">{{ guild.weeklyContribution }} 點</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 創建公會對話框 -->
+            <div v-if="showCreateGuild" class="modal fade show" style="display: block">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">創建公會</h5>
+                            <button type="button" class="btn-close" @click="showCreateGuild = false"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">公會名稱</label>
+                                <input type="text" class="form-control" v-model="newGuild.name">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">公會描述</label>
+                                <textarea class="form-control" v-model="newGuild.description"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">公會標誌</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div v-for="emblem in guildEmblems" 
+                                         :key="emblem"
+                                         class="guild-emblem"
+                                         :class="{ selected: newGuild.emblem === emblem }"
+                                         @click="newGuild.emblem = emblem">
+                                        <i :class="emblem"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @click="showCreateGuild = false">取消</button>
+                            <button type="button" class="btn btn-primary" @click="createGuild">創建 (1000金幣)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 寵物系統 -->
+            <div class="pet-section" v-if="player">
+                <h3 class="mb-4">寵物系統</h3>
+                
+                <!-- 當前寵物 -->
+                <div v-if="player.currentPet" class="pet-card">
+                    <div class="pet-avatar">
+                        <img :src="player.currentPet.avatar" alt="寵物">
+                        <img v-if="player.currentPet.costume" 
+                             :src="player.currentPet.costume.image" 
+                             class="pet-costume" 
+                             :alt="player.currentPet.costume.name">
+                    </div>
+                    <div class="pet-info">
+                        <h4>{{ player.currentPet.name }} Lv.{{ player.currentPet.level }}</h4>
+                        <div class="pet-stats">
+                            <div class="pet-stat">
+                                <div>經驗值</div>
+                                <div>{{ player.currentPet.exp }}/{{ player.currentPet.nextLevelExp }}</div>
+                            </div>
+                            <div class="pet-stat">
+                                <div>親密度</div>
+                                <div>{{ player.currentPet.intimacy }}/100</div>
+                            </div>
+                            <div class="pet-stat">
+                                <div>飢餓度</div>
+                                <div>{{ player.currentPet.hunger }}/100</div>
+                            </div>
+                            <div class="pet-stat">
+                                <div>心情</div>
+                                <div>{{ player.currentPet.mood }}/100</div>
+                            </div>
+                        </div>
+                        <div class="pet-actions">
+                            <button class="pet-action" @click="feedPet">餵食</button>
+                            <button class="pet-action" @click="playWithPet">互動</button>
+                            <button class="pet-action" @click="showWardrobe = true">換裝</button>
+                            <button class="pet-action" @click="sendPetAdventure">探險</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 寵物衣櫃 -->
+                <div v-if="showWardrobe" class="modal fade show" style="display: block">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">寵物衣櫃</h5>
+                                <button type="button" class="btn-close" @click="showWardrobe = false"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="wardrobe-section">
+                                    <div v-for="item in player.petCostumes" 
+                                         :key="item.id"
+                                         :class="['costume-item', { equipped: isEquipped(item) }]"
+                                         @click="equipCostume(item)">
+                                        <img :src="item.thumbnail" :alt="item.name">
+                                        <div>{{ item.name }}</div>
+                                        <div class="text-muted">{{ item.category }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 每日任務 -->
+                <div class="quest-section">
+                    <h4>每日任務</h4>
+                    <div v-for="quest in dailyQuests" 
+                         :key="quest.id" 
+                         class="quest-card">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5>{{ quest.name }}</h5>
+                                <p>{{ quest.description }}</p>
+                            </div>
+                            <div>
+                                獎勵: {{ quest.reward }} 金幣
+                            </div>
+                        </div>
+                        <div class="quest-progress">
+                            <div class="progress-bar" 
+                                 :style="{ width: (quest.progress / quest.target * 100) + '%' }">
+                            </div>
+                        </div>
+                        <div class="text-end mt-2">
+                            {{ quest.progress }}/{{ quest.target }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 遊戲攻略 -->
+                <div class="guide-section">
+                    <h3 class="mb-4">遊戲攻略</h3>
+                    <div class="guide-nav">
+                        <div v-for="section in guideSections"
+                             :key="section.id"
+                             :class="['guide-nav-item', { active: currentGuideSection === section.id }]"
+                             @click="currentGuideSection = section.id">
+                            {{ section.name }}
+                        </div>
+                    </div>
+                    <div class="guide-content">
+                        <div v-if="currentGuideSection === 'newbie'">
+                            <h4>新手指南</h4>
+                            <p>歡迎來到遊戲！以下是一些基礎指南：</p>
+                            <ul>
+                                <li>完成每日任務可以獲得大量金幣和經驗值</li>
+                                <li>定期餵食和互動可以提高寵物親密度</li>
+                                <li>寵物親密度越高，探險獲得的獎勵越豐厚</li>
+                                <li>加入公會可以獲得額外的任務和獎勵</li>
+                                <li>參與競技場可以獲得稀有寵物裝備</li>
+                            </ul>
+                        </div>
+                        <div v-if="currentGuideSection === 'pets'">
+                            <h4>寵物圖鑑</h4>
+                            <div v-for="(pet, type) in petGuide" :key="type">
+                                <h5>{{ type }}</h5>
+                                <ul>
+                                    <li v-for="info in pet" :key="info.name">
+                                        {{ info.name }} - {{ info.description }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div v-if="currentGuideSection === 'gold'">
+                            <h4>賺取金幣攻略</h4>
+                            <ul>
+                                <li>每日任務：每天完成所有每日任務可獲得500-1000金幣</li>
+                                <li>寵物探險：根據探險難度可獲得100-500金幣</li>
+                                <li>競技場：每場勝利可獲得200金幣</li>
+                                <li>公會任務：完成公會任務可獲得300-800金幣</li>
+                                <li>成就獎勵：解鎖成就可獲得大量金幣獎勵</li>
+                                <li>寵物出售：多餘的寵物可以出售獲得金幣</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+        
+        const app = Vue.createApp({
+            data() {
+                return {
+                    username: '',
+                    tempUsername: '',
+                    player: {
+                        health: 100,
+                        maxHealth: 100,
+                        level: 1,
+                        exp: 0,
+                        nextLevelExp: 100,
+                        attack: 10,
+                        gold: 0,
+                        x: 100,
+                        y: 200
+                    },
+                    otherPlayers: [],
+                    currentWorld: null,
+                    currentArea: null,
+                    currentMonster: null,
+                    showMonsterGallery: false,
+                    discoveredMonsters: [],
+                    monsterKillCount: {},
+                    showShop: false,
+                    ownedOutfits: [],
+                    selectedOutfit: null,
+                    worlds: [
+                        {
+                            id: 'forest',
+                            name: '迷霧森林',
+                            description: '充滿神秘生物的原始森林',
+                            recommendedLevel: 1,
+                            areas: [
+                                {
+                                    id: 'forest_entrance',
+                                    name: '森林入口',
+                                    description: '森林的入口區域，較為安全',
+                                    recommendedLevel: 1,
+                                    monsters: ['slime', 'goblin']
+                                },
+                                {
+                                    id: 'deep_forest',
+                                    name: '深邃密林',
+                                    description: '森林深處，隱藏著更強大的怪物',
+                                    recommendedLevel: 5,
+                                    monsters: ['goblin', 'skeleton', 'forest_troll']
+                                }
+                            ]
+                        },
+                        {
+                            id: 'desert',
+                            name: '荒漠廢墟',
+                            description: '充滿遠古文明遺跡的神秘沙漠',
+                            recommendedLevel: 10,
+                            areas: [
+                                {
+                                    id: 'desert_outskirts',
+                                    name: '沙漠邊緣',
+                                    description: '沙漠的外圍地帶',
+                                    recommendedLevel: 10,
+                                    monsters: ['sand_worm', 'mummy']
+                                },
+                                {
+                                    id: 'ancient_ruins',
+                                    name: '遠古遺跡',
+                                    description: '古代文明的遺跡，藏有強大的守衛',
+                                    recommendedLevel: 15,
+                                    monsters: ['mummy', 'ancient_golem', 'desert_dragon']
+                                }
+                            ]
+                        },
+                        {
+                            id: 'neo_city',
+                            name: '新星城',
+                            description: '充滿高科技設施的未來都市',
+                            recommendedLevel: 1,
+                            areas: [
+                                {
+                                    id: 'cyber_district',
+                                    name: '賽博區',
+                                    description: '霓虹閃爍的街道，充滿各式機器人',
+                                    recommendedLevel: 1,
+                                    monsters: ['cyber_slime', 'rogue_bot']
+                                },
+                                {
+                                    id: 'tech_lab',
+                                    name: '科技實驗室',
+                                    description: '進行危險實驗的研究設施',
+                                    recommendedLevel: 5,
+                                    monsters: ['mad_scientist', 'mutant_drone']
+                                }
+                            ]
+                        },
+                        {
+                            id: 'quantum_realm',
+                            name: '量子領域',
+                            description: '神秘的量子空間，充滿不穩定能量',
+                            recommendedLevel: 10,
+                            areas: [
+                                {
+                                    id: 'data_stream',
+                                    name: '數據流',
+                                    description: '由純粹數據構成的虛擬空間',
+                                    recommendedLevel: 10,
+                                    monsters: ['data_wraith', 'virus_beast']
+                                },
+                                {
+                                    id: 'quantum_core',
+                                    name: '量子核心',
+                                    description: '量子計算的中樞，隱藏著強大的敵人',
+                                    recommendedLevel: 15,
+                                    monsters: ['quantum_guardian', 'ai_overlord']
+                                }
+                            ]
+                        }
+                    ],
+                    allMonsters: [
+                        {
+                            id: 'slime',
+                            name: '史萊姆',
+                            description: '最基礎的魔物，性格溫和',
+                            health: 50,
+                            maxHealth: 50,
+                            attack: 5,
+                            exp: 20,
+                            gold: 10,
+                            location: '森林入口'
+                        },
+                        {
+                            id: 'goblin',
+                            name: '哥布林',
+                            description: '狡猾的小型魔物，喜歡群體行動',
+                            health: 80,
+                            maxHealth: 80,
+                            attack: 8,
+                            exp: 35,
+                            gold: 15,
+                            location: '森林入口、深邃密林'
+                        },
+                        {
+                            id: 'skeleton',
+                            name: '骷髏戰士',
+                            description: '不死系魔物，擁有基礎的劍術能力',
+                            health: 100,
+                            maxHealth: 100,
+                            attack: 12,
+                            exp: 50,
+                            gold: 25,
+                            location: '深邃密林'
+                        },
+                        {
+                            id: 'forest_troll',
+                            name: '森林巨魔',
+                            description: '體型巨大的森林守護者',
+                            health: 200,
+                            maxHealth: 200,
+                            attack: 15,
+                            exp: 100,
+                            gold: 50,
+                            location: '深邃密林'
+                        },
+                        {
+                            id: 'sand_worm',
+                            name: '沙漠蠕蟲',
+                            description: '潛伏在沙地下的巨大生物',
+                            health: 150,
+                            maxHealth: 150,
+                            attack: 18,
+                            exp: 80,
+                            gold: 40,
+                            location: '沙漠邊緣'
+                        },
+                        {
+                            id: 'mummy',
+                            name: '木乃伊',
+                            description: '古代遺跡中甦醒的不死生物',
+                            health: 180,
+                            maxHealth: 180,
+                            attack: 20,
+                            exp: 100,
+                            gold: 60,
+                            location: '沙漠邊緣、遠古遺跡'
+                        },
+                        {
+                            id: 'ancient_golem',
+                            name: '遠古魔像',
+                            description: '守護古代遺跡的石頭巨人',
+                            health: 300,
+                            maxHealth: 300,
+                            attack: 25,
+                            exp: 150,
+                            gold: 100,
+                            location: '遠古遺跡'
+                        },
+                        {
+                            id: 'desert_dragon',
+                            name: '沙漠巨龍',
+                            description: '棲息在遺跡深處的遠古龍族',
+                            health: 500,
+                            maxHealth: 500,
+                            attack: 35,
+                            exp: 300,
+                            gold: 200,
+                            location: '遠古遺跡'
+                        },
+                        {
+                            id: 'cyber_slime',
+                            name: '電子史萊姆',
+                            description: '由納米機器人組成的基礎敵人',
+                            health: 50,
+                            maxHealth: 50,
+                            attack: 5,
+                            exp: 20,
+                            gold: 10,
+                            location: '賽博區'
+                        },
+                        {
+                            id: 'rogue_bot',
+                            name: '失控機器人',
+                            description: '程式出錯的服務型機器人',
+                            health: 80,
+                            maxHealth: 80,
+                            attack: 8,
+                            exp: 35,
+                            gold: 15,
+                            location: '賽博區'
+                        },
+                        {
+                            id: 'mad_scientist',
+                            name: '瘋狂科學家',
+                            description: '進行危險實驗的科學家，已經半機械化',
+                            health: 100,
+                            maxHealth: 100,
+                            attack: 12,
+                            exp: 50,
+                            gold: 25,
+                            location: '科技實驗室'
+                        },
+                        {
+                            id: 'mutant_drone',
+                            name: '變異無人機',
+                            description: '被實驗改造過的攻擊型無人機',
+                            health: 150,
+                            maxHealth: 150,
+                            attack: 15,
+                            exp: 100,
+                            gold: 50,
+                            location: '科技實驗室'
+                        },
+                        {
+                            id: 'data_wraith',
+                            name: '數據幽靈',
+                            description: '由損壞數據形成的神秘生物',
+                            health: 180,
+                            maxHealth: 180,
+                            attack: 18,
+                            exp: 80,
+                            gold: 40,
+                            location: '數據流'
+                        },
+                        {
+                            id: 'virus_beast',
+                            name: '病毒巨獸',
+                            description: '由電腦病毒實體化形成的危險生物',
+                            health: 200,
+                            maxHealth: 200,
+                            attack: 20,
+                            exp: 100,
+                            gold: 60,
+                            location: '數據流'
+                        },
+                        {
+                            id: 'quantum_guardian',
+                            name: '量子守衛',
+                            description: '守護量子核心的高級人工智能',
+                            health: 300,
+                            maxHealth: 300,
+                            attack: 25,
+                            exp: 150,
+                            gold: 100,
+                            location: '量子核心'
+                        },
+                        {
+                            id: 'ai_overlord',
+                            name: 'AI主宰',
+                            description: '量子計算機中誕生的超級人工智能',
+                            health: 500,
+                            maxHealth: 500,
+                            attack: 35,
+                            exp: 300,
+                            gold: 200,
+                            location: '量子核心'
+                        }
+                    ],
+                    outfits: [
+                        {
+                            id: 'cyber_suit',
+                            name: '賽博戰士套裝',
+                            description: '充滿未來感的戰鬥服，附帶發光效果',
+                            price: 1000,
+                            icon: 'fas fa-user-astronaut',
+                            avatar: 'cyber_avatar.png',
+                            chatFrame: 'cyber_frame'
+                        },
+                        {
+                            id: 'neon_ninja',
+                            name: '霓虹忍者套裝',
+                            description: '搭載隱形技術的輕盈戰衣',
+                            price: 1500,
+                            icon: 'fas fa-user-ninja',
+                            avatar: 'neon_avatar.png',
+                            chatFrame: 'neon_frame'
+                        },
+                        {
+                            id: 'tech_mage',
+                            name: '科技法師長袍',
+                            description: '結合魔法與科技的神祕服裝',
+                            price: 2000,
+                            icon: 'fas fa-hat-wizard',
+                            avatar: 'mage_avatar.png',
+                            chatFrame: 'tech_frame'
+                        },
+                        {
+                            id: 'mech_warrior',
+                            name: '機甲戰士裝甲',
+                            description: '全面覆蓋式的重型戰鬥裝甲',
+                            price: 3000,
+                            icon: 'fas fa-robot',
+                            avatar: 'mech_avatar.png',
+                            chatFrame: 'mech_frame'
+                        }
+                    ],
+                    attackCooldown: 0,
+                    healCooldown: 0,
+                    canvasContext: null,
+                    gameLoop: null,
+                    currentNPC: null,
+                    currentDialog: '',
+                    dialogOptions: [],
+                    showQuestLog: false,
+                    activeQuests: [],
+                    completedQuests: [],
+                    showStoryNotification: false,
+                    storyNotification: '',
+                    npcs: [
+                        {
+                            id: 'cyber_mentor',
+                            name: '賽博導師',
+                            icon: 'fas fa-user-graduate',
+                            x: 200,
+                            y: 150,
+                            dialog: {
+                                greeting: '歡迎來到新星城，年輕的冒險者。我能感受到你身上蘊含著強大的潛力。',
+                                quest: '我們的城市正面臨著 AI 失控的危機，需要你的幫助。',
+                                options: [
+                                    {
+                                        text: '我該如何幫忙？',
+                                        next: 'quest_intro'
+                                    },
+                                    {
+                                        text: '告訴我更多關於這個世界的事',
+                                        next: 'world_info'
+                                    },
+                                    {
+                                        text: '再見',
+                                        next: 'farewell'
+                                    }
+                                ]
+                            },
+                            quests: ['tutorial_quest']
+                        },
+                        {
+                            id: 'tech_merchant',
+                            name: '科技商人',
+                            icon: 'fas fa-user-tie',
+                            x: 600,
+                            y: 150,
+                            dialog: {
+                                greeting: '我這裡有最先進的裝備，要不要看看？',
+                                trading: '這些都是限量版的科技裝備，錯過可就沒了。',
+                                options: [
+                                    {
+                                        text: '讓我看看你的商品',
+                                        next: 'show_shop'
+                                    },
+                                    {
+                                        text: '再見',
+                                        next: 'farewell'
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    quests: {
+                        tutorial_quest: {
+                            id: 'tutorial_quest',
+                            title: '新手任務：城市守護者',
+                            description: '證明你有能力保護這座城市',
+                            objectives: [
+                                {
+                                    id: 'kill_cyber_slimes',
+                                    description: '消滅賽博區的電子史萊姆',
+                                    target: 5,
+                                    progress: 0,
+                                    completed: false
+                                },
+                                {
+                                    id: 'collect_data',
+                                    description: '收集數據碎片',
+                                    target: 3,
+                                    progress: 0,
+                                    completed: false
+                                }
+                            ],
+                            rewards: {
+                                exp: 500,
+                                gold: 1000,
+                                items: ['basic_cyber_suit']
+                            },
+                            completed: false
+                        }
+                    },
+                    showWorldMap: false,
+                    selectedGender: null,
+                    selectedInitialOutfit: null,
+                    initialOutfits: [
+                        {
+                            id: 'quantum_warrior',
+                            name: '量子戰士',
+                            description: '配備最新量子技術的戰鬥服，能夠短暫操控時空',
+                            icon: 'fas fa-user-astronaut',
+                            weaponIcon: 'fas fa-atom',
+                            weapon: {
+                                name: '量子破碎者',
+                                description: '能夠撕裂時空的高科技武器',
+                                damage: 25,
+                                special: '20%機率造成2倍傷害'
+                            },
+                            stats: {
+                                attack: 15,
+                                defense: 12,
+                                speed: 8,
+                                quantumPower: 10
+                            },
+                            skill: '量子閃現：短暫進入量子態，無視傷害'
+                        },
+                        {
+                            id: 'cyber_ninja',
+                            name: '賽博忍者',
+                            description: '配備隱形科技和神經增強的輕盈戰衣',
+                            icon: 'fas fa-user-ninja',
+                            weaponIcon: 'fas fa-bolt',
+                            weapon: {
+                                name: '等離子雙刃',
+                                description: '能夠切割任何物質的能量刀刃',
+                                damage: 20,
+                                special: '連擊傷害提升30%'
+                            },
+                            stats: {
+                                attack: 12,
+                                defense: 8,
+                                speed: 15,
+                                stealth: 10
+                            },
+                            skill: '幻影分身：製造三個分身混淆敵人'
+                        },
+                        {
+                            id: 'neo_mage',
+                            name: '新世代法師',
+                            description: '融合魔法與科技的超頻戰袍',
+                            icon: 'fas fa-hat-wizard',
+                            weaponIcon: 'fas fa-wand-sparkles',
+                            weapon: {
+                                name: '科技法杖',
+                                description: '將魔力轉換為純能量的高科技法杖',
+                                damage: 30,
+                                special: '魔力消耗減少40%'
+                            },
+                            stats: {
+                                attack: 18,
+                                defense: 6,
+                                speed: 8,
+                                magicPower: 15
+                            },
+                            skill: '能量超載：短時間內魔法傷害翻倍'
+                        },
+                        {
+                            id: 'mech_tank',
+                            name: '機甲戰警',
+                            description: '重型機械裝甲，配備多重防禦系統',
+                            icon: 'fas fa-robot',
+                            weaponIcon: 'fas fa-shield-halved',
+                            weapon: {
+                                name: '聚變重砲',
+                                description: '使用核聚變能量的重型武器',
+                                damage: 35,
+                                special: '範圍傷害'
+                            },
+                            stats: {
+                                attack: 10,
+                                defense: 20,
+                                speed: 5,
+                                energy: 12
+                            },
+                            skill: '能量護盾：展開無敵護盾抵擋傷害'
+                        },
+                        {
+                            id: 'data_hunter',
+                            name: '數據獵人',
+                            description: '專門入侵系統的高科技裝備',
+                            icon: 'fas fa-laptop-code',
+                            weaponIcon: 'fas fa-microchip',
+                            weapon: {
+                                name: '數據切割者',
+                                description: '能夠駭入敵人系統的神經武器',
+                                damage: 15,
+                                special: '30%機率使敵人混亂'
+                            },
+                            stats: {
+                                attack: 8,
+                                defense: 10,
+                                speed: 12,
+                                hacking: 18
+                            },
+                            skill: '系統入侵：癱瘓敵人並竊取能量'
+                        }
+                    ],
+                    outfitSets: {
+                        seasons: [
+                            {
+                                id: 'spring',
+                                name: '春之萌芽',
+                                description: '春天主題套裝，充滿生機與活力',
+                                pieces: [
+                                    {
+                                        id: 'spring_crown',
+                                        name: '春之花冠',
+                                        icon: 'fas fa-crown',
+                                        price: 800
+                                    },
+                                    {
+                                        id: 'spring_robe',
+                                        name: '春之長袍',
+                                        icon: 'fas fa-tshirt',
+                                        price: 1200
+                                    },
+                                    {
+                                        id: 'spring_boots',
+                                        name: '春之靴',
+                                        icon: 'fas fa-shoe-prints',
+                                        price: 600
+                                    }
+                                ],
+                                setBonus: '全套裝備增加生命恢復速度'
+                            },
+                            // ...其他季節套裝
+                        ],
+                        zodiac: [
+                            {
+                                id: 'rat',
+                                name: '靈鼠套裝',
+                                description: '子鼠主題套裝，提升敏捷和智慧',
+                                pieces: [
+                                    {
+                                        id: 'rat_mask',
+                                        name: '靈鼠面具',
+                                        icon: 'fas fa-mask',
+                                        price: 1000
+                                    },
+                                    {
+                                        id: 'rat_armor',
+                                        name: '靈鼠戰甲',
+                                        icon: 'fas fa-tshirt',
+                                        price: 1500
+                                    },
+                                    {
+                                        id: 'rat_boots',
+                                        name: '靈鼠靴',
+                                        icon: 'fas fa-shoe-prints',
+                                        price: 800
+                                    }
+                                ],
+                                setBonus: '全套裝備增加移動速度和暴擊率'
+                            },
+                            // ...其他生肖套裝
+                        ],
+                        elements: [
+                            {
+                                id: 'fire',
+                                name: '烈焰套裝',
+                                description: '火元素主題套裝，充滿破壞力',
+                                pieces: [
+                                    {
+                                        id: 'fire_crown',
+                                        name: '烈焰王冠',
+                                        icon: 'fas fa-fire',
+                                        price: 1500
+                                    },
+                                    {
+                                        id: 'fire_armor',
+                                        name: '烈焰戰甲',
+                                        icon: 'fas fa-tshirt',
+                                        price: 2000
+                                    },
+                                    {
+                                        id: 'fire_boots',
+                                        name: '烈焰靴',
+                                        icon: 'fas fa-shoe-prints',
+                                        price: 1000
+                                    }
+                                ],
+                                setBonus: '全套裝備增加攻擊力和火屬性傷害'
+                            },
+                            // ...其他元素套裝
+                        ],
+                        cyberpunk: [
+                            {
+                                id: 'neon_rebel',
+                                name: '霓虹叛客套裝',
+                                description: '賽博龐克風格套裝，充滿未來感',
+                                pieces: [
+                                    {
+                                        id: 'neon_visor',
+                                        name: '霓虹護目鏡',
+                                        icon: 'fas fa-glasses',
+                                        price: 2000
+                                    },
+                                    {
+                                        id: 'neon_jacket',
+                                        name: '霓虹外套',
+                                        icon: 'fas fa-tshirt',
+                                        price: 2500
+                                    },
+                                    {
+                                        id: 'neon_boots',
+                                        name: '霓虹戰靴',
+                                        icon: 'fas fa-shoe-prints',
+                                        price: 1500
+                                    }
+                                ],
+                                setBonus: '全套裝備增加技能冷卻縮減和能量恢復'
+                            },
+                            // ...其他賽博朋克套裝
+                        ]
+                    },
+                    showProfile: false,
+                    currentTitle: '新手冒險者',
+                    playerId: '',
+                    availableTitles: [
+                        {
+                            id: 'newbie',
+                            name: '新手冒險者',
+                            description: '初次進入遊戲的玩家',
+                            requirement: 'default'
+                        },
+                        {
+                            id: 'monster_hunter',
+                            name: '怪物獵人',
+                            description: '累計擊殺100隻怪物',
+                            requirement: 'kills:100'
+                        },
+                        {
+                            id: 'fashion_master',
+                            name: '時尚達人',
+                            description: '收集10件裝備',
+                            requirement: 'outfits:10'
+                        },
+                        {
+                            id: 'explorer',
+                            name: '探索大師',
+                            description: '發現所有怪物',
+                            requirement: 'monsters:all'
+                        }
+                    ],
+                    currentAvatarUrl: 'https://via.placeholder.com/60',
+                    currentOutfitIcon: 'fas fa-user',
+                    showChat: false,
+                    chatMessages: [],
+                    newMessage: '',
+                    statNames: {
+                        attack: '攻擊力',
+                        defense: '防禦力',
+                        speed: '速度',
+                        quantumPower: '量子力場',
+                        stealth: '隱匿度',
+                        magicPower: '魔法強度',
+                        energy: '能量值',
+                        hacking: '駭入能力'
+                    },
+                    shopItems: [
+                        {
+                            id: 'health_nano',
+                            name: '奈米修復劑',
+                            description: '立即恢復30%生命值',
+                            price: 100,
+                            icon: 'fas fa-capsules',
+                            type: 'consumable'
+                        },
+                        {
+                            id: 'energy_core',
+                            name: '能量核心',
+                            description: '永久增加10%最大生命值',
+                            price: 1000,
+                            icon: 'fas fa-battery-full',
+                            type: 'permanent'
+                        },
+                        {
+                            id: 'hack_module',
+                            name: '駭入模組',
+                            description: '增加10%爆擊機率',
+                            price: 800,
+                            icon: 'fas fa-microchip',
+                            type: 'equipment'
+                        },
+                        {
+                            id: 'quantum_shard',
+                            name: '量子碎片',
+                            description: '隨機增加一項屬性',
+                            price: 500,
+                            icon: 'fas fa-atom',
+                            type: 'consumable'
+                        }
+                    ],
+                    showCreateGuild: false,
+                    showGuildList: false,
+                    newGuild: {
+                        name: '',
+                        description: '',
+                        emblem: 'fas fa-crown'
+                    },
+                    guildEmblems: [
+                        'fas fa-crown',
+                        'fas fa-dragon',
+                        'fas fa-shield-alt',
+                        'fas fa-skull-crossbones',
+                        'fas fa-star',
+                        'fas fa-fire',
+                        'fas fa-bolt',
+                        'fas fa-moon',
+                        'fas fa-sun',
+                        'fas fa-heart'
+                    ],
+                    donationOptions: [
+                        {
+                            id: 'small',
+                            name: '小額捐獻',
+                            cost: 100,
+                            contribution: 10
+                        },
+                        {
+                            id: 'medium',
+                            name: '中額捐獻',
+                            cost: 500,
+                            contribution: 60
+                        },
+                        {
+                            id: 'large',
+                            name: '大額捐獻',
+                            cost: 1000,
+                            contribution: 150
+                        },
+                        {
+                            id: 'epic',
+                            name: '史詩捐獻',
+                            cost: 5000,
+                            contribution: 1000
+                        }
+                    ],
+                    weeklyGuildRanking: [],
+                    guildRoles: {
+                        LEADER: '會長',
+                        VICE_LEADER: '副會長',
+                        OFFICER: '幹部',
+                        ELITE: '精英',
+                        MEMBER: '成員'
+                    },
+                    guildLevelRequirements: {
+                        CREATE: 10,
+                        JOIN: 5
+                    },
+                    showWardrobe: false,
+                    currentGuideSection: 'newbie',
+                    guideSections: [
+                        { id: 'newbie', name: '新手指南' },
+                        { id: 'pets', name: '寵物圖鑑' },
+                        { id: 'gold', name: '賺錢攻略' }
+                    ],
+                    petGuide: {
+                        '普通寵物': [
+                            { name: '小貓咪', description: '親密度容易提升，適合新手培養' },
+                            { name: '小狗狗', description: '探險能力較強，容易獲得金幣' }
+                        ],
+                        '稀有寵物': [
+                            { name: '幻影貓', description: '具有隱身能力，探險成功率高' },
+                            { name: '火焰狼', description: '戰鬥能力極強，適合競技場' }
+                        ],
+                        '傳說寵物': [
+                            { name: '九尾狐', description: '全能型寵物，各項屬性均衡' },
+                            { name: '神龍', description: '最強戰力，但需要大量資源培養' }
+                        ]
+                    },
+                    dailyQuests: [
+                        {
+                            id: 1,
+                            name: '寵物餵食',
+                            description: '餵食寵物3次',
+                            progress: 0,
+                            target: 3,
+                            reward: 100
+                        },
+                        {
+                            id: 2,
+                            name: '寵物互動',
+                            description: '與寵物互動5次',
+                            progress: 0,
+                            target: 5,
+                            reward: 150
+                        },
+                        {
+                            id: 3,
+                            name: '寵物探險',
+                            description: '完成2次寵物探險',
+                            progress: 0,
+                            target: 2,
+                            reward: 200
+                        }
+                    ]
+                }
+            },
+            computed: {
+                canAttack() {
+                    return this.attackCooldown === 0 && this.currentMonster && this.currentMonster.health > 0;
+                },
+                canHeal() {
+                    return this.healCooldown === 0 && this.player.health < this.player.maxHealth;
+                },
+                totalMonsterKills() {
+                    return Object.values(this.monsterKillCount).reduce((a, b) => a + b, 0);
+                }
+            },
+            methods: {
+                setUsername() {
+                    if (this.tempUsername.trim()) {
+                        this.tempUsername = this.tempUsername.trim();
+                    }
+                },
+                selectGender(gender) {
+                    this.selectedGender = gender;
+                },
+                selectInitialOutfit(outfit) {
+                    this.selectedInitialOutfit = outfit;
+                    this.ownedOutfits = [outfit.id];
+                    // 更新玩家初始屬性
+                    this.player.attack += outfit.stats.attack || 0;
+                    this.player.defense = (outfit.stats.defense || 0);
+                    this.player.speed = (outfit.stats.speed || 0);
+                    this.startGame();
+                },
+                startGame() {
+                    if (this.tempUsername.trim() && this.selectedGender && this.selectedInitialOutfit) {
+                        this.username = this.tempUsername.trim();
+                        this.playerId = `${this.username}#${Math.floor(1000 + Math.random() * 9000)}`;
+                        this.joinGame();
+                    }
+                },
+                joinGame() {
+                    gun.get('players').get(this.username).put({
+                        ...this.player,
+                        name: this.username,
+                        lastActive: Date.now()
+                    });
+                    this.startGameLoop();
+                },
+                selectWorld(world) {
+                    this.currentWorld = world;
+                    this.showWorldMap = false;
+                },
+                selectArea(area) {
+                    if (this.player.level >= area.recommendedLevel) {
+                        this.currentArea = area;
+                        this.spawnMonster();
+                    } else {
+                        alert('你的等級不足以進入該區域！');
+                    }
+                },
+                returnToWorldSelect() {
+                    this.currentWorld = null;
+                    this.currentArea = null;
+                    this.currentMonster = null;
+                    this.showWorldMap = true;
+                },
+                returnToAreaSelect() {
+                    this.currentArea = null;
+                    this.currentMonster = null;
+                },
+                toggleMonsterGallery() {
+                    this.showMonsterGallery = !this.showMonsterGallery;
+                },
+                toggleShop() {
+                    this.showShop = !this.showShop;
+                },
+                openWorldMap() {
+                    this.showWorldMap = true;
+                    this.currentArea = null;
+                },
+                spawnMonster() {
+                    if (!this.currentArea) return;
+                    
+                    const areaMonsters = this.currentArea.monsters;
+                    const randomMonsterId = areaMonsters[Math.floor(Math.random() * areaMonsters.length)];
+                    const monsterTemplate = this.allMonsters.find(m => m.id === randomMonsterId);
+                    
+                    if (monsterTemplate) {
+                        this.currentMonster = { ...monsterTemplate };
+                        
+                        // 如果是新發現的怪物，加入圖鑑
+                        if (!this.discoveredMonsters.includes(monsterTemplate.id)) {
+                            this.discoveredMonsters.push(monsterTemplate.id);
+                            // 儲存到 GUN.js
+                            gun.get('monster-discoveries').get(this.username).put(this.discoveredMonsters);
+                        }
+                    }
+                },
+                attack() {
+                    if (!this.canAttack) return;
+
+                    // 對怪物造成傷害
+                    this.currentMonster.health -= this.player.attack;
+                    
+                    // 開始攻擊冷卻
+                    this.attackCooldown = 2;
+                    const cooldown = setInterval(() => {
+                        this.attackCooldown--;
+                        if (this.attackCooldown <= 0) {
+                            clearInterval(cooldown);
+                        }
+                    }, 1000);
+
+                    // 檢查怪物是否死亡
+                    if (this.currentMonster.health <= 0) {
+                        this.player.exp += this.currentMonster.exp;
+                        this.player.gold += this.currentMonster.gold;
+                        
+                        // 更新擊殺計數
+                        this.monsterKillCount[this.currentMonster.id] = (this.monsterKillCount[this.currentMonster.id] || 0) + 1;
+                        gun.get('monster-kills').get(this.username).put(this.monsterKillCount);
+
+                        // 檢查是否升級
+                        if (this.player.exp >= this.player.nextLevelExp) {
+                            this.levelUp();
+                        }
+
+                        // 延遲後重生新怪物
+                        setTimeout(() => this.spawnMonster(), 1500);
+                    } else {
+                        // 怪物反擊
+                        this.player.health = Math.max(0, this.player.health - this.currentMonster.attack);
+                    }
+
+                    // 更新玩家狀態
+                    this.updatePlayerState();
+
+                    // 檢查任務進度
+                    if (this.currentMonster.health <= 0) {
+                        this.activeQuests.forEach(quest => {
+                            quest.objectives.forEach(objective => {
+                                if (objective.id === 'kill_cyber_slimes' && 
+                                    this.currentMonster.id === 'cyber_slime') {
+                                    this.updateQuestProgress(quest.id, objective.id, 1);
+                                }
+                            });
+                        });
+                    }
+                },
+                heal() {
+                    if (!this.canHeal) return;
+
+                    const healAmount = this.player.maxHealth * 0.3;
+                    this.player.health = Math.min(this.player.maxHealth, this.player.health + healAmount);
+
+                    // 開始治癒冷卻
+                    this.healCooldown = 5;
+                    const cooldown = setInterval(() => {
+                        this.healCooldown--;
+                        if (this.healCooldown <= 0) {
+                            clearInterval(cooldown);
+                        }
+                    }, 1000);
+
+                    this.updatePlayerState();
+                },
+                levelUp() {
+                    this.player.level++;
+                    this.player.exp -= this.player.nextLevelExp;
+                    this.player.nextLevelExp = Math.floor(this.player.nextLevelExp * 1.5);
+                    this.player.maxHealth += 20;
+                    this.player.health = this.player.maxHealth;
+                    this.player.attack += 5;
+                },
+                updatePlayerState() {
+                    gun.get('players').get(this.username).put({
+                        ...this.player,
+                        lastActive: Date.now()
+                    });
+                },
+                purchaseOutfit(outfit) {
+                    if (this.player.gold >= outfit.price && !this.ownedOutfits.includes(outfit.id)) {
+                        this.player.gold -= outfit.price;
+                        this.ownedOutfits.push(outfit.id);
+                        // 儲存到 GUN.js
+                        gun.get('player-outfits').get(this.username).put(this.ownedOutfits);
+                        alert(`成功購買 ${outfit.name}！`);
+                    }
+                },
+                startGameLoop() {
+                    this.canvasContext = this.$refs.gameCanvas.getContext('2d');
+                    this.gameLoop = setInterval(() => {
+                        this.updateGame();
+                        this.drawGame();
+                    }, 1000 / 60);
+
+                    // 載入任務資料
+                    this.loadQuestData();
+                },
+                updateGame() {
+                    // 遊戲邏輯更新
+                },
+                drawGame() {
+                    const ctx = this.canvasContext;
+                    ctx.clearRect(0, 0, 800, 400);
+
+                    // 根據當前區域繪製不同的背景
+                    if (this.currentArea) {
+                        // 設定漸層背景
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                        if (this.currentWorld.id === 'neo_city') {
+                            gradient.addColorStop(0, '#1a1a2e');
+                            gradient.addColorStop(1, '#16213e');
+                        } else {
+                            gradient.addColorStop(0, '#000428');
+                            gradient.addColorStop(1, '#004e92');
+                        }
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(0, 0, 800, 400);
+
+                        // 添加科幻元素
+                        if (this.currentWorld.id === 'neo_city') {
+                            // 畫霓虹建築
+                            for (let i = 0; i < 5; i++) {
+                                ctx.fillStyle = '#00f3ff';
+                                ctx.fillRect(50 + i * 150, 100, 30, 200);
+                                
+                                // 霓虹效果
+                                ctx.shadowColor = '#00f3ff';
+                                ctx.shadowBlur = 20;
+                                ctx.strokeStyle = '#00f3ff';
+                                ctx.strokeRect(50 + i * 150, 100, 30, 200);
+                                ctx.shadowBlur = 0;
+                            }
+                        } else {
+                            // 畫量子效果
+                            for (let i = 0; i < 20; i++) {
+                                ctx.fillStyle = `rgba(188, 19, 254, ${Math.random() * 0.5})`;
+                                ctx.beginPath();
+                                ctx.arc(
+                                    Math.random() * 800,
+                                    Math.random() * 400,
+                                    Math.random() * 5,
+                                    0,
+                                    Math.PI * 2
+                                );
+                                ctx.fill();
+                            }
+                        }
+                    }
+
+                    // 繪製玩家（加入裝備效果）
+                    ctx.fillStyle = '#4a90e2';
+                    ctx.beginPath();
+                    ctx.arc(this.player.x, this.player.y, 20, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (this.selectedOutfit) {
+                        // 根據選擇的裝備添加特效
+                        ctx.strokeStyle = '#00f3ff';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(this.player.x, this.player.y, 23, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    // 繪製怪物（加入科幻效果）
+                    if (this.currentMonster && this.currentMonster.health > 0) {
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.beginPath();
+                        ctx.arc(600, 200, 30, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 添加科技感光環
+                        ctx.strokeStyle = '#bc13fe';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(600, 200, 35, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    // 繪製 NPC
+                    this.npcs.forEach(npc => {
+                        // NPC 標記
+                        ctx.fillStyle = '#00f3ff';
+                        ctx.beginPath();
+                        ctx.arc(npc.x, npc.y, 15, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 發光效果
+                        ctx.shadowColor = '#00f3ff';
+                        ctx.shadowBlur = 10;
+                        ctx.strokeStyle = '#00f3ff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+
+                        // 如果 NPC 有任務，添加驚嘆號
+                        if (this.hasAvailableQuest(npc)) {
+                            ctx.fillStyle = '#f7d794';
+                            ctx.beginPath();
+                            ctx.arc(npc.x, npc.y - 20, 5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    });
+                },
+                checkNPCInteraction(x, y) {
+                    const clickedNPC = this.npcs.find(npc => {
+                        const dx = x - npc.x;
+                        const dy = y - npc.y;
+                        return Math.sqrt(dx * dx + dy * dy) < 20;
+                    });
+
+                    if (clickedNPC) {
+                        this.startDialog(clickedNPC);
+                    }
+                },
+                startDialog(npc) {
+                    this.currentNPC = npc;
+                    this.currentDialog = npc.dialog.greeting;
+                    this.dialogOptions = npc.dialog.options;
+                },
+                selectDialogOption(option) {
+                    switch (option.next) {
+                        case 'quest_intro':
+                            if (this.hasAvailableQuest(this.currentNPC)) {
+                                const quest = this.quests[this.currentNPC.quests[0]];
+                                this.currentDialog = quest.description;
+                                this.dialogOptions = [
+                                    {
+                                        text: '接受任務',
+                                        next: 'accept_quest'
+                                    },
+                                    {
+                                        text: '稍後再說',
+                                        next: 'farewell'
+                                    }
+                                ];
+                            }
+                            break;
+                        case 'accept_quest':
+                            this.acceptQuest(this.currentNPC.quests[0]);
+                            this.endDialog();
+                            break;
+                        case 'show_shop':
+                            this.toggleShop();
+                            this.endDialog();
+                            break;
+                        case 'world_info':
+                            this.currentDialog = '這個世界正在經歷科技與魔法的融合，但同時也帶來了許多危機...';
+                            this.dialogOptions = [
+                                {
+                                    text: '我明白了',
+                                    next: 'farewell'
+                                }
+                            ];
+                            break;
+                        case 'farewell':
+                            this.endDialog();
+                            break;
+                    }
+                },
+                endDialog() {
+                    this.currentNPC = null;
+                    this.currentDialog = '';
+                    this.dialogOptions = [];
+                },
+                hasAvailableQuest(npc) {
+                    return npc.quests && npc.quests.some(questId => 
+                        !this.activeQuests.some(q => q.id === questId) &&
+                        !this.completedQuests.includes(questId)
+                    );
+                },
+                acceptQuest(questId) {
+                    const quest = { ...this.quests[questId] };
+                    this.activeQuests.push(quest);
+                    this.showNotification(`接受新任務：${quest.title}`);
+                    // 儲存任務狀態
+                    gun.get('player-quests').get(this.username).put({
+                        active: this.activeQuests,
+                        completed: this.completedQuests
+                    });
+                },
+                updateQuestProgress(questId, objectiveId, progress) {
+                    const quest = this.activeQuests.find(q => q.id === questId);
+                    if (quest) {
+                        const objective = quest.objectives.find(o => o.id === objectiveId);
+                        if (objective) {
+                            objective.progress = Math.min(objective.target, objective.progress + progress);
+                            objective.completed = objective.progress >= objective.target;
+
+                            // 檢查任務是否完成
+                            if (quest.objectives.every(o => o.completed)) {
+                                quest.completed = true;
+                                this.showNotification(`任務完成：${quest.title}`);
+                            }
+
+                            // 儲存進度
+                            gun.get('player-quests').get(this.username).put({
+                                active: this.activeQuests,
+                                completed: this.completedQuests
+                            });
+                        }
+                    }
+                },
+                claimQuestReward(quest) {
+                    // 給予獎勵
+                    this.player.exp += quest.rewards.exp;
+                    this.player.gold += quest.rewards.gold;
+                    
+                    // 移除已完成的任務
+                    this.activeQuests = this.activeQuests.filter(q => q.id !== quest.id);
+                    this.completedQuests.push(quest.id);
+
+                    // 儲存狀態
+                    gun.get('player-quests').get(this.username).put({
+                        active: this.activeQuests,
+                        completed: this.completedQuests
+                    });
+
+                    this.showNotification(`獲得獎勵：${quest.rewards.exp} 經驗值，${quest.rewards.gold} 金幣`);
+
+                    // 檢查是否升級
+                    if (this.player.exp >= this.player.nextLevelExp) {
+                        this.levelUp();
+                    }
+                },
+                toggleQuestLog() {
+                    this.showQuestLog = !this.showQuestLog;
+                },
+                loadQuestData() {
+                    gun.get('player-quests').get(this.username).on((data) => {
+                        if (data) {
+                            this.activeQuests = data.active || [];
+                            this.completedQuests = data.completed || [];
+                        }
+                    });
+                },
+                showNotification(message) {
+                    this.storyNotification = message;
+                    this.showStoryNotification = true;
+                    setTimeout(() => {
+                        this.showStoryNotification = false;
+                    }, 3000);
+                },
+                toggleProfile() {
+                    this.showProfile = !this.showProfile;
+                },
+                selectTitle(title) {
+                    // 檢查是否符合稱號條件
+                    if (this.checkTitleRequirement(title)) {
+                        this.currentTitle = title.name;
+                        // 儲存到 GUN.js
+                        gun.get('player-titles').get(this.username).put({
+                            currentTitle: title.id
+                        });
+                    }
+                },
+                checkTitleRequirement(title) {
+                    switch(title.requirement) {
+                        case 'default':
+                            return true;
+                        case 'kills:100':
+                            return this.totalMonsterKills >= 100;
+                        case 'outfits:10':
+                            return this.ownedOutfits.length >= 10;
+                        case 'monsters:all':
+                            return this.discoveredMonsters.length === this.allMonsters.length;
+                        default:
+                            return false;
+                    }
+                },
+                toggleChat() {
+                    this.showChat = !this.showChat;
+                },
+                sendMessage() {
+                    if (this.newMessage.trim()) {
+                        const message = {
+                            id: Date.now(),
+                            sender: this.username,
+                            content: this.newMessage.trim(),
+                            timestamp: Date.now()
+                        };
+                        gun.get('chat').set(message);
+                        this.newMessage = '';
+                    }
+                },
+                formatTime(timestamp) {
+                    return new Date(timestamp).toLocaleTimeString();
+                },
+                initializeChatDrag() {
+                    const chatWindow = document.getElementById('chatWindow');
+                    const chatHeader = document.getElementById('chatHeader');
+                    let isDragging = false;
+                    let currentX;
+                    let currentY;
+                    let initialX;
+                    let initialY;
+                    let xOffset = 0;
+                    let yOffset = 0;
+
+                    chatHeader.addEventListener('mousedown', (e) => {
+                        isDragging = true;
+                        initialX = e.clientX - xOffset;
+                        initialY = e.clientY - yOffset;
+                    });
+
+                    document.addEventListener('mousemove', (e) => {
+                        if (isDragging) {
+                            e.preventDefault();
+                            currentX = e.clientX - initialX;
+                            currentY = e.clientY - initialY;
+                            xOffset = currentX;
+                            yOffset = currentY;
+                            chatWindow.style.transform = 
+                                `translate(${currentX}px, ${currentY}px)`;
+                        }
+                    });
+
+                    document.addEventListener('mouseup', () => {
+                        isDragging = false;
+                    });
+                },
+                createGuild() {
+                    if (this.player.level < this.guildLevelRequirements.CREATE) {
+                        alert('需要達到10級才能創建公會！');
+                        return;
+                    }
+                    if (this.player.gold < 1000) {
+                        alert('金幣不足！需要1000金幣創建公會');
+                        return;
+                    }
+                    if (!this.newGuild.name || !this.newGuild.description) {
+                        alert('請填寫完整的公會信息！');
+                        return;
+                    }
+
+                    const guild = {
+                        id: Date.now().toString(),
+                        name: this.newGuild.name,
+                        description: this.newGuild.description,
+                        emblem: this.newGuild.emblem,
+                        level: 1,
+                        exp: 0,
+                        totalContribution: 0,
+                        weeklyContribution: 0,
+                        rank: this.weeklyGuildRanking.length + 1,
+                        members: [{
+                            id: this.player.id,
+                            name: this.player.name,
+                            level: this.player.level,
+                            contribution: 0,
+                            role: 'LEADER',
+                            joinDate: Date.now()
+                        }],
+                        createdAt: Date.now()
+                    };
+
+                    this.player.gold -= 1000;
+                    this.player.guild = guild;
+                    this.updateGuildRanking();
+                    this.showCreateGuild = false;
+                    this.saveGame();
+                },
+                donateToGuild(option) {
+                    if (this.player.gold < option.cost) {
+                        alert('金幣不足！');
+                        return;
+                    }
+
+                    this.player.gold -= option.cost;
+                    this.player.guild.totalContribution += option.contribution;
+                    this.player.guild.weeklyContribution += option.contribution;
+
+                    const memberIndex = this.player.guild.members.findIndex(m => m.id === this.player.id);
+                    if (memberIndex !== -1) {
+                        this.player.guild.members[memberIndex].contribution += option.contribution;
+                    }
+
+                    this.updateGuildRanking();
+                    this.saveGame();
+                },
+                updateGuildRanking() {
+                    if (!this.player.guild) return;
+                    
+                    // 模擬其他公會的週貢獻
+                    const otherGuilds = [
+                        { name: '永恆之翼', weeklyContribution: 15000 },
+                        { name: '黎明守護者', weeklyContribution: 12000 },
+                        { name: '暗影議會', weeklyContribution: 10000 },
+                        { name: '星辰使者', weeklyContribution: 8000 },
+                        { name: '混沌之鎚', weeklyContribution: 6000 }
+                    ];
+
+                    this.weeklyGuildRanking = [
+                        ...otherGuilds,
+                        {
+                            name: this.player.guild.name,
+                            weeklyContribution: this.player.guild.weeklyContribution
+                        }
+                    ].sort((a, b) => b.weeklyContribution - a.weeklyContribution);
+
+                    // 更新公會排名
+                    const playerGuildIndex = this.weeklyGuildRanking.findIndex(
+                        g => g.name === this.player.guild.name
+                    );
+                    if (playerGuildIndex !== -1) {
+                        this.player.guild.rank = playerGuildIndex + 1;
+                    }
+                },
+                weeklyReset() {
+                    if (this.player.guild) {
+                        this.player.guild.weeklyContribution = 0;
+                        this.updateGuildRanking();
+                    }
+                },
+                feedPet() {
+                    if (this.player.gold < 10) {
+                        alert('金幣不足！餵食需要10金幣');
+                        return;
+                    }
+                    
+                    this.player.gold -= 10;
+                    this.player.currentPet.hunger = Math.min(100, this.player.currentPet.hunger + 20);
+                    this.player.currentPet.mood = Math.min(100, this.player.currentPet.mood + 5);
+                    this.player.currentPet.intimacy = Math.min(100, this.player.currentPet.intimacy + 1);
+                    
+                    // 更新任務進度
+                    const feedQuest = this.dailyQuests.find(q => q.id === 1);
+                    if (feedQuest && feedQuest.progress < feedQuest.target) {
+                        feedQuest.progress++;
+                        if (feedQuest.progress === feedQuest.target) {
+                            this.player.gold += feedQuest.reward;
+                            alert(`任務完成！獲得${feedQuest.reward}金幣`);
+                        }
+                    }
+                },
+                playWithPet() {
+                    this.player.currentPet.mood = Math.min(100, this.player.currentPet.mood + 15);
+                    this.player.currentPet.intimacy = Math.min(100, this.player.currentPet.intimacy + 2);
+                    this.player.currentPet.hunger = Math.max(0, this.player.currentPet.hunger - 5);
+                    
+                    // 更新任務進度
+                    const playQuest = this.dailyQuests.find(q => q.id === 2);
+                    if (playQuest && playQuest.progress < playQuest.target) {
+                        playQuest.progress++;
+                        if (playQuest.progress === playQuest.target) {
+                            this.player.gold += playQuest.reward;
+                            alert(`任務完成！獲得${playQuest.reward}金幣`);
+                        }
+                    }
+                },
+                equipCostume(costume) {
+                    if (this.isEquipped(costume)) {
+                        this.player.currentPet.costume = null;
+                    } else {
+                        this.player.currentPet.costume = costume;
+                    }
+                },
+                isEquipped(costume) {
+                    return this.player.currentPet.costume && 
+                           this.player.currentPet.costume.id === costume.id;
+                },
+                sendPetAdventure() {
+                    if (this.player.currentPet.hunger < 30) {
+                        alert('寵物太餓了，無法探險！請先餵食');
+                        return;
+                    }
+                    if (this.player.currentPet.mood < 30) {
+                        alert('寵物心情不好，無法探險！請先互動');
+                        return;
+                    }
+
+                    const baseReward = 100;
+                    const intimacyBonus = Math.floor(this.player.currentPet.intimacy / 20);
+                    const levelBonus = this.player.currentPet.level * 10;
+                    const randomBonus = Math.floor(Math.random() * 50);
+                    
+                    const totalReward = baseReward + intimacyBonus + levelBonus + randomBonus;
+                    
+                    this.player.gold += totalReward;
+                    this.player.currentPet.hunger = Math.max(0, this.player.currentPet.hunger - 30);
+                    this.player.currentPet.mood = Math.max(0, this.player.currentPet.mood - 20);
+                    this.player.currentPet.exp += 50;
+                    
+                    // 更新任務進度
+                    const adventureQuest = this.dailyQuests.find(q => q.id === 3);
+                    if (adventureQuest && adventureQuest.progress < adventureQuest.target) {
+                        adventureQuest.progress++;
+                        if (adventureQuest.progress === adventureQuest.target) {
+                            this.player.gold += adventureQuest.reward;
+                            alert(`任務完成！獲得${adventureQuest.reward}金幣`);
+                        }
+                    }
+
+                    alert(`探險完成！獲得${totalReward}金幣`);
+                },
+                autoSave() {
+                    // 每分鐘自動保存一次
+                    setInterval(() => {
+                        this.saveGame();
+                    }, 60000);
+                }
+            },
+            mounted() {
+                // 監聽其他玩家
+                gun.get('players').map().on((data, id) => {
